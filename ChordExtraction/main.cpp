@@ -20,7 +20,8 @@ using namespace Vamp::HostExt;
 
 
 
-#define KEY "nnls-chroma:chordino"
+#define CHORDINO "nnls-chroma:chordino"
+#define TEMPO "qm-vamp-plugins:qm-tempotracker"
 #define WAV_TEST "sample/suynghitronganh.wav"
 static const float rate = 44100.00f;
 //typedef std::vector<Result> Results;
@@ -82,14 +83,17 @@ int _tmain(int argc, _TCHAR* argv[])
 		Vamp::HostExt::PluginLoader::getInstance()->listPlugins();
 	// Get Chordino plugin (nnls-chroma:chordino)
 	Plugin *p = PluginLoader::getInstance()->loadPlugin
-		(KEY, rate, PluginLoader::ADAPT_ALL);
+		(CHORDINO, rate, PluginLoader::ADAPT_ALL);
+	Plugin *pTempo = PluginLoader::getInstance()->loadPlugin
+		(TEMPO, rate, PluginLoader::ADAPT_ALL);
 	if (!p)
 		return 1;
 	PluginInputDomainAdapter *pa = new PluginInputDomainAdapter(p);
-	Vamp::Plugin::InputDomain inp = pa->getInputDomain();
+	PluginInputDomainAdapter *paTempo = new PluginInputDomainAdapter(pTempo);
 	// Features data
 	
 	Plugin::FeatureSet f;
+	Plugin::FeatureSet fTempo;
 	//Results r;
 	float **data = 0;
 	size_t channels = pa->getMaxChannelCount();
@@ -102,6 +106,7 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	//pa->initialise(channels, step, block);
 	pa->initialise(channels, step, block);
+	paTempo->initialise(channels, step, block);
 
 	bool real = true;
 	// Option 1:Create a test audio
@@ -119,10 +124,14 @@ int _tmain(int argc, _TCHAR* argv[])
 		for (size_t c = 0; c < channels; ++c) ptr[c] = data[c] + idx;
 		RealTime timestamp = RealTime::frame2RealTime(idx, rate);
 		Plugin::FeatureSet fs = pa->process(ptr, timestamp);
+		Plugin::FeatureSet fsTempo = paTempo->process(ptr, timestamp);
 		appendFeatures(f, fs);
+		appendFeatures(fTempo, fsTempo);
 	}
 	Plugin::FeatureSet fs = pa->getRemainingFeatures();
+	Plugin::FeatureSet fsTempo = paTempo->getRemainingFeatures();
 	appendFeatures(f, fs);
+	appendFeatures(fTempo, fsTempo);
 	if (data) destroyTestAudio(data, channels);
 	
 	return 0;
